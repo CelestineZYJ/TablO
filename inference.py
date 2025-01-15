@@ -26,17 +26,17 @@ MODEL_CONFIGS = {
         'model_id': "osunlp/TableLlama",
         'model_path': "osunlp/TableLlama"
     },
-    'llama3': {
+    'llama3-chat': {
         'model_id': "meta-llama/Meta-Llama-3-8B-Instruct",
-        'model_path': "/shared/nas2/shared/llms/Meta-Llama-3-8B-Instruct"
+        'model_path': "meta-llama/Meta-Llama-3-8B-Instruct"
     },
-    'llama3-text': {
+    'llama3': {
         'model_id': "meta-llama/Meta-Llama-3-8B",
-        "model_path": "/shared/nas2/shared/llms/Meta-Llama-3-8B"
+        "model_path": "meta-llama/Meta-Llama-3-8B"
     },
     'llama2' : {
-        'model_id': '/shared/nas/data/m1/shared-resource/llm/meta-llama/Llama-2-7b-hf',
-        'model_path': "/shared/nas/data/m1/shared-resource/llm/meta-llama/Llama-2-7b-hf"
+        'model_id': 'meta-llama/Llama-2-7b-hf',
+        'model_path': "meta-llama/Llama-2-7b-hf"
     },
     "mistral": {
         'model_id': "mistralai/Mistral-7B-Instruct-v0.2",
@@ -94,17 +94,38 @@ def construct_context(batch_ins:Dict[str, List], tokenizer, train_strategy, cont
         else:
             table = convert_table_to_llama_format(table_column_names, table_content_values)
 
-        
-        if args.model == 'tablellama':
+        example3, example5, example6 = '', '', ''
+        if args.prompt == 'cot':
+            if args.model == 'tablellama': 
+                messages = [{"role": "user", "content": f"Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: {table_caption} Table: {table} Question: The statement is <{claim}> Is it entailed or refuted by the table above? Present your thoughts step by step. Then answer \"entailed\", \"refuted\", or \"not enough info\"."}]
+                  
+                # example3 = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: Table 2: POS and SEM tagging accuracy with baselines and an upper bound. MFT: most frequent tag; UnsupEmb: classifier using unsupervised word embeddings; Word2Tag: upper bound encoder-decoder. Table: [TAB] | [EMPTY] | MFT | UnsupEmb | Word2Tag | [SEP]\n| POS | 91.95 | 87.06 | 95.55 |\n[SEP] | | SEM | 82.00 | 81.11 | 91.41 Question: The statement is <The UnsupEmb baseline performs rather poorly on both POS and SEM tagging.> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\". \n<answer> not enough info. \n<answer> entailed."
+                # example5 = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: Table 3: Ablation study of capsule net and word-level attention on Wikidata dataset. Table: [TAB] | Recall | 0.1 | 0.2 | 0.3 | AUC | [SEP]\n| -Word-ATT | 0.648 | 0.515 | 0.395 | 0.389 |\n[SEP] | | -Capsule | 0.635 | 0.507 | 0.413 | 0.386 |\n[SEP] | | Our Model | 0.650 | 0.519 | 0.422 | 0.405 Question: The statement is <The results prove the effectiveness of word-level attention to exploit the local interactions in link prediction task.> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\". \n<answer> not enough info."
+                # example6 = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: Table 3: Cue and token distribution in the conversational negation corpus. Table: [TAB] | Total negation cues | 2921 | [SEP]\n| True negation cues | 2674 |\n[SEP] | | False negation cues | 247 |\n[SEP] | | Average scope length | 2.9 |\n[SEP] | | Average sentence length | 13.6 |\n[SEP] | | Average tweet length | 22.3 Question: The statement is <The average number of tokens per tweet is not 22.3, per sentence is not 13.6 and average scope length is not 2.9.> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\". \n<answer> refuted."
+                # messages = [{"role": "user", "content": f"{example3} {example5} Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: {table_caption} Table: {table} Question: The statement is <{claim}> Is it entailed or refuted by the table above? Present your thoughts step by step. Then answer \"entailed\", \"refuted\", or \"not enough info\"."}]
+                            
+            else:
+                messages = [{"role": "user", "content": f"Read the following table and then answer a question. Caption: {table_caption} Table: {table} Claim: {claim} Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\"."}]
+                # example3 = "Read the following table and then answer a question. Caption: Table 2: POS and SEM tagging accuracy with baselines and an upper bound. MFT: most frequent tag; UnsupEmb: classifier using unsupervised word embeddings; Word2Tag: upper bound encoder-decoder. Table: || [EMPTY] | MFT | UnsupEmb | Word2Tag ||\n|| POS | 91.95 | 87.06 | 95.55 ||\n|| SEM | 82.00 | 81.11 | 91.41 ||\n Claim: The UnsupEmb baseline performs rather poorly on both POS and SEM tagging. Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\". \n<answer> support."
+                # example5 = "Read the following table and then answer a question. Caption: Table 3: Ablation study of capsule net and word-level attention on Wikidata dataset. Table: || Recall | 0.1 | 0.2 | 0.3 | AUC ||\n|| -Word-ATT | 0.648 | 0.515 | 0.395 | 0.389 ||\n|| -Capsule | 0.635 | 0.507 | 0.413 | 0.386 ||\n|| Our Model | 0.650 | 0.519 | 0.422 | 0.405 ||\n Claim: The results prove the effectiveness of word-level attention to exploit the local interactions in link prediction task. Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\". \n<answer> not enough info."
+                # example6 = "Read the following table and then answer a question. Caption: Table 3: Cue and token distribution in the conversational negation corpus. Table: || Total negation cues | 2921 ||\n|| True negation cues | 2674 ||\n|| False negation cues | 247 ||\n|| Average scope length | 2.9 ||\n|| Average sentence length | 13.6 ||\n|| Average tweet length | 22.3 ||\n Claim: The average number of tokens per tweet is not 22.3, per sentence is not 13.6 and average scope length is not 2.9. Question: Is the claim true or false? Present your thoughts step by step. Then answer \"support\", \"refute\", or \"not enough info\". \n<answer> refute"
+                # messages = [{"role": "user", "content": f"{example3} {example5} {example6} Read the following table and then answer a question. Caption: {table_caption} Table: {table} Claim: {claim} Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\"."}]
 
-            messages = [{"role": "user", "content": f"Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instructio: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: {table_caption} Table: {table} Question: The statement is <{claim}> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\"."}]
-                        # {"role": "user", "content": f"Which country won the 2023 Eurovision Song Contest? "},
-                        # {"role": "assistant", "content": f"The question is related to the following information. The document was published on 2023/05/13. Liverpool, United Kingdom CNN \u2014\n\nSweden\u2019s Loreen has won the Eurovision Song Contest for a second time, earning a historic triumph at an extravagant and crowd-pleasing show held in Liverpool, United Kingdom, on behalf of Ukraine.\n\nShe became just the second performer to win the competition more than once, clinching victory with pop ballad \u201cTattoo\u201d and cementing her legacy at the kitsch and wildly celebrated music contest.\n\nLoreen had previously won the contest in Baku in 2012, with her career-altering hit \u201cEuphoria. The answer for this question is Sweden."},
+        elif args.prompt == 'fewshot':
+            if args.model == 'tablellama': 
+                example3 = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: Table 2: POS and SEM tagging accuracy with baselines and an upper bound. MFT: most frequent tag; UnsupEmb: classifier using unsupervised word embeddings; Word2Tag: upper bound encoder-decoder. Table: [TAB] | [EMPTY] | MFT | UnsupEmb | Word2Tag | [SEP]\n| POS | 91.95 | 87.06 | 95.55 |\n[SEP] | | SEM | 82.00 | 81.11 | 91.41 Question: The statement is <The UnsupEmb baseline performs rather poorly on both POS and SEM tagging.> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\". \n<answer> not enough info. \n<answer> entailed."
+                example5 = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: Table 3: Ablation study of capsule net and word-level attention on Wikidata dataset. Table: [TAB] | Recall | 0.1 | 0.2 | 0.3 | AUC | [SEP]\n| -Word-ATT | 0.648 | 0.515 | 0.395 | 0.389 |\n[SEP] | | -Capsule | 0.635 | 0.507 | 0.413 | 0.386 |\n[SEP] | | Our Model | 0.650 | 0.519 | 0.422 | 0.405 Question: The statement is <The results prove the effectiveness of word-level attention to exploit the local interactions in link prediction task.> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\". \n<answer> not enough info."
+                example6 = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: Table 3: Cue and token distribution in the conversational negation corpus. Table: [TAB] | Total negation cues | 2921 | [SEP]\n| True negation cues | 2674 |\n[SEP] | | False negation cues | 247 |\n[SEP] | | Average scope length | 2.9 |\n[SEP] | | Average sentence length | 13.6 |\n[SEP] | | Average tweet length | 22.3 Question: The statement is <The average number of tokens per tweet is not 22.3, per sentence is not 13.6 and average scope length is not 2.9.> Is it entailed or refuted by the table above? Answer \"entailed\", \"refute\", or \"not enough info\". \n<answer> refuted."
+                messages = [{"role": "user", "content": f"{example3} {example5} Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request. Instruction: This is a table fact verification task. The goal of this task is to distinguish whether the given statement is entailed or refuted by the given table. Input: {table_caption} Table: {table} Question: The statement is <{claim}> Is it entailed or refuted by the table above? Answer \"entailed\", \"refuted\", or \"not enough info\"."}]
+                            # {"role": "user", "content": f"Which country won the 2023 Eurovision Song Contest? "},
+                            # {"role": "assistant", "content": f"The question is related to the following information. The document was published on 2023/05/13. Liverpool, United Kingdom CNN \u2014\n\nSweden\u2019s Loreen has won the Eurovision Song Contest for a second time, earning a historic triumph at an extravagant and crowd-pleasing show held in Liverpool, United Kingdom, on behalf of Ukraine.\n\nShe became just the second performer to win the competition more than once, clinching victory with pop ballad \u201cTattoo\u201d and cementing her legacy at the kitsch and wildly celebrated music contest.\n\nLoreen had previously won the contest in Baku in 2012, with her career-altering hit \u201cEuphoria. The answer for this question is Sweden."},
 
-                        # {"role": "user", "content": f"{question}"}]
-
-        else:
-            messages = messages = [{"role": "user", "content": f"Read the following table and then answer a question. Caption: {table_caption} Table: {table} Claim: {claim} Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\"."}]
+                            # {"role": "user", "content": f"{question}"}]
+            else:
+                example3 = "Read the following table and then answer a question. Caption: Table 2: POS and SEM tagging accuracy with baselines and an upper bound. MFT: most frequent tag; UnsupEmb: classifier using unsupervised word embeddings; Word2Tag: upper bound encoder-decoder. Table: || [EMPTY] | MFT | UnsupEmb | Word2Tag ||\n|| POS | 91.95 | 87.06 | 95.55 ||\n|| SEM | 82.00 | 81.11 | 91.41 ||\n Claim: The UnsupEmb baseline performs rather poorly on both POS and SEM tagging. Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\". \n<answer> support."
+                example5 = "Read the following table and then answer a question. Caption: Table 3: Ablation study of capsule net and word-level attention on Wikidata dataset. Table: || Recall | 0.1 | 0.2 | 0.3 | AUC ||\n|| -Word-ATT | 0.648 | 0.515 | 0.395 | 0.389 ||\n|| -Capsule | 0.635 | 0.507 | 0.413 | 0.386 ||\n|| Our Model | 0.650 | 0.519 | 0.422 | 0.405 ||\n Claim: The results prove the effectiveness of word-level attention to exploit the local interactions in link prediction task. Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\". \n<answer> not enough info."
+                example6 = "Read the following table and then answer a question. Caption: Table 3: Cue and token distribution in the conversational negation corpus. Table: || Total negation cues | 2921 ||\n|| True negation cues | 2674 ||\n|| False negation cues | 247 ||\n|| Average scope length | 2.9 ||\n|| Average sentence length | 13.6 ||\n|| Average tweet length | 22.3 ||\n Claim: The average number of tokens per tweet is not 22.3, per sentence is not 13.6 and average scope length is not 2.9. Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\". \n<answer> refute"
+                messages = messages = [{"role": "user", "content": f"{example3} {example5} {example6} Read the following table and then answer a question. Caption: {table_caption} Table: {table} Claim: {claim} Question: Is the claim true or false? Answer \"support\", \"refute\", or \"not enough info\"."}]
 
             
         # if use_template:
@@ -185,7 +206,7 @@ if __name__ == '__main__':
     os.environ['HF_TOKEN'] = ''
     parser = argparse.ArgumentParser()
     parser.add_argument('--gen_batch_size', type=int, default=4) 
-    parser.add_argument('--prompt', type=str, default='gen')
+    parser.add_argument('--prompt', type=str, default='fewshot')
 
     parser.add_argument('--model', type=str, choices=['tablellama', 'llama3','llama2', 'mistral','llama3-text'], default='tablellama')
     args = parser.parse_args() 
@@ -194,15 +215,19 @@ if __name__ == '__main__':
     train_strategy = '' # realtime200  realtime200sameSIU_indexqa indexDocSamerealtime200 realtime200Inst_indexqa  realtime200SIU_indexqa indexDocrealtime200  realtime200SIU_indexChunkqa  indexChunkrealtime200  indexSumChunkrealtime200 indexDocSamerealtime200
 
     # base model pretrain/index
-    localpath='tablellama'
+    # localpath=args.model
 
 
     if '50' in train_strategy:
         sample_num = '50'
 
     dataset = load_dataset("json", data_files="./sci_tab.json", token=os.environ['HF_TOKEN'])['train'] # train is the default split here 
-
-    model = AutoModelForCausalLM.from_pretrained("osunlp/TableLlama")
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_CONFIGS[args.model]['model_path'],
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+    )
     tokenizer = AutoTokenizer.from_pretrained("osunlp/TableLlama", token=os.environ['HF_TOKEN'], padding_side='left')
     # The warning is missleading, but you need sentencepiece installed if the tokenizer you are trying to load does not have a tokenizer.json (FYI @itazap )
 
@@ -210,38 +235,7 @@ if __name__ == '__main__':
         tokenizer.eos_token_id,
         tokenizer.convert_tokens_to_ids("<|eot_id|>")
         ]
-    
-    # if 'lr' in localpath:
-    #     config = AutoConfig.from_pretrained(
-    #     localpath
-    #     )
-    #     tokenizer = transformers.AutoTokenizer.from_pretrained(
-    #         localpath, access_token=os.environ['HF_TOKEN'], padding_side='left'
-    #     )
-    #     terminators = [
-    #         tokenizer.eos_token_id,
-    #         tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    #         ]
-    #     model = transformers.AutoModelForCausalLM.from_pretrained(
-    #         localpath,
-    #         config=config,
-    #         torch_dtype=torch.bfloat16,
-    #         device_map="auto",
-    #     )
-    #     args.model='ckpt'
-    # else:
-    #     tokenizer = AutoTokenizer.from_pretrained(MODEL_CONFIGS[localpath]['model_id'], access_token=os.environ['HF_TOKEN'], padding_side='left')
-    #     terminators = [
-    #         tokenizer.eos_token_id,
-    #         tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    #         ]
-    
-    #     model = AutoModelForCausalLM.from_pretrained(
-    #         MODEL_CONFIGS[args.model]['model_path'],
-    #         torch_dtype=torch.bfloat16,
-    #         device_map="auto",
-    #     )
-    #     # args.model='zeroshot'
+
 
 
     tokenizer.pad_token = tokenizer.eos_token
@@ -259,7 +253,7 @@ if __name__ == '__main__':
     qa_metrics = []
 
     total_batches = ceil(len(tokenized_dataset) /args.gen_batch_size ) 
-    total_batches = 25
+    # total_batches = 25
     for batch_idx in tqdm(range(total_batches)):
         end = min(len(tokenized_dataset), start+ args.gen_batch_size) 
         batch = tokenized_dataset[start: end]
@@ -279,7 +273,7 @@ if __name__ == '__main__':
 
         for idx, output_ids in enumerate(outputs):
             input_len = batch['input_ids'][idx].shape[-1]
-            result = tokenizer.decode(output_ids[input_len:], skip_special_tokens=True) # str 
+            result = tokenizer.decode(output_ids[input_len:], skip_special_tokens=True)# str 
             # prompt = tokenizer.decode(batch['input_ids'][idx], skip_special_tokens=True) 
             # options = batch['choices'][idx]
             # answer_text = [options[int(x)] for x in batch['answer'][idx]]
@@ -297,19 +291,20 @@ if __name__ == '__main__':
                 'generated': result 
             }
             predict_label = ''
+            predicted = predicted.lower()
             try:
                 if args.model=='tablellama':
                     if 'refute' in predicted:
-                        predict_label = 'refuted'
+                        predict_label = 'refutes'
                     elif 'entail' in predicted:
-                        predict_label = 'supported'
+                        predict_label = 'supports'
                     elif 'not enough' in predicted:
                         predict_label = 'not enough info'
                 else:
                     if 'refute' in predicted:
-                        predict_label = 'refuted'
+                        predict_label = 'refutes'
                     elif 'support' in predicted:
-                        predict_label = 'supported'
+                        predict_label = 'supports'
                     elif 'not enough' in predicted:
                         predict_label = 'not enough info'
                 results.update({'predict_label':predict_label})
@@ -329,13 +324,13 @@ if __name__ == '__main__':
 
     
 
-    filename = f'output/{args.model}.json' 
+    filename = f'output/{args.model}_{args.prompt}.json' 
 
-
+    result_list.append({'accuracy':sum(qa_metrics*1)/len(qa_metrics)})
     with open(filename,'w') as f:
         json.dump(result_list, f, indent=2)
 
-    print('accuracy: '+str(sum(qa_metrics*1.0)/len(qa_metrics)))
+    print('accuracy: '+str(sum(qa_metrics*1)/len(qa_metrics)))
 
     # final_metrics = {} 
     # for metric in qa_metrics:
