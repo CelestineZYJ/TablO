@@ -208,7 +208,7 @@ if __name__ == '__main__':
     parser.add_argument('--gen_batch_size', type=int, default=4) 
     parser.add_argument('--prompt', type=str, default='fewshot')
 
-    parser.add_argument('--model', type=str, choices=['tablellama', 'llama3','llama2', 'mistral','llama3-text'], default='tablellama')
+    parser.add_argument('--model', type=str, choices=['tablellama', 'llama3','llama2', 'mistral','llama3-text'], default='llama3')
     args = parser.parse_args() 
 
 
