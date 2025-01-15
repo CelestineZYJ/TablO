@@ -22,6 +22,14 @@ load_dotenv()
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 MODEL_CONFIGS = {
+    'qwen':{
+        'model_id':"Qwen/Qwen-7B",
+        'model_path':"Qwen/Qwen-7B"
+    },
+    'qwq-lcot':{
+        'model_id':"prithivMLmods/QwQ-LCoT-7B-Instruct",
+        'model_path':"prithivMLmods/QwQ-LCoT-7B-Instruct"
+    },
     'tablellama': {
         'model_id': "osunlp/TableLlama",
         'model_path': "osunlp/TableLlama"
@@ -205,10 +213,10 @@ def compute_qa_metrics(gold:List[str], predicted: str):
 if __name__ == '__main__':
     os.environ['HF_TOKEN'] = ''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gen_batch_size', type=int, default=4) 
+    parser.add_argument('--gen_batch_size', type=int, default=1) 
     parser.add_argument('--prompt', type=str, default='fewshot')
 
-    parser.add_argument('--model', type=str, choices=['tablellama', 'llama3','llama2', 'mistral','llama3-text'], default='llama3')
+    parser.add_argument('--model', type=str, choices=['tablellama', 'llama3','llama2', 'mistral','llama3-text'], default='qwen')#qwq-lcot-7b
     args = parser.parse_args() 
 
 
@@ -227,11 +235,25 @@ if __name__ == '__main__':
         MODEL_CONFIGS[args.model]['model_path'],
         torch_dtype=torch.bfloat16,
         device_map="auto",
+        trust_remote_code=True,
     )
-    tokenizer = AutoTokenizer.from_pretrained("osunlp/TableLlama", token=os.environ['HF_TOKEN'], padding_side='left')
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_CONFIGS[args.model]['model_path'], token=os.environ['HF_TOKEN'], padding_side='left', trust_remote_code=True)
     # The warning is missleading, but you need sentencepiece installed if the tokenizer you are trying to load does not have a tokenizer.json (FYI @itazap )
 
-    terminators = [
+    if args.model=='qwq-lcot-7b':
+        terminators = [
+        tokenizer.eos_token_id,
+        0
+        ]
+    elif args.model == 'qwen':
+        terminators = [
+        151643,
+        0
+        ]
+
+        tokenizer.add_special_tokens({'pad_token': '<|extra_0|>'})
+    else:
+        terminators = [
         tokenizer.eos_token_id,
         tokenizer.convert_tokens_to_ids("<|eot_id|>")
         ]
@@ -239,7 +261,8 @@ if __name__ == '__main__':
 
 
     tokenizer.pad_token = tokenizer.eos_token
-     
+    tokenizer.add_special_tokens({'pad_token': '<|extra_0|>'})
+
     tokenized_dataset = dataset.map(partial(construct_context, tokenizer=tokenizer, train_strategy=train_strategy, prompt=args.prompt, context_type='none'), batched=True) 
     tokenized_dataset = tokenized_dataset.map(lambda x: tokenizer(x['text'],padding=True, max_length=2048, truncation=True), 
         batched=True,  
